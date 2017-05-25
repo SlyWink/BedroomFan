@@ -22,6 +22,7 @@
 #define PWM_MAX 0x94 // Limit max current to 1A (of 2.7A)
 #define PWM_MIN 0x10
 #define PWM_RANGE (PWM_MAX - PWM_MIN + 1)
+#define PWM_STEP 40
 
 #define POT_MAX 0xC3 // Right limit
 #define POT_MIN 0x45 // Left limit
@@ -31,8 +32,20 @@
 
 #define SENSOR_ZERO 0x7F
 
-void Fan_Speed(uint8_t p_pwm) {
-  OCR0A = (p_pwm < PWM_MAX) ? p_pwm : PWM_MAX ;
+void Fan_Speed(uint8_t p_new_pwm) {
+  static uint8_t l_old_pwm = 0 ;
+  uint8_t l_pwm ;
+
+  // Progressive PWM to avoid massive current load
+  if (p_new_pwm > l_old_pwm) {
+    for (l_pwm=l_old_pwm ; l_pwm<p_new_pwm ; l_pwm++)
+      if (l_pwm >= PWM_MIN) { OCR0A = l_pwm ; _delay_ms(PWM_STEP) ; }
+  } else if (p_new_pwm < l_old_pwm) {
+    for (l_pwm=l_old_pwm ; l_pwm>p_new_pwm ; l_pwm--)
+      if (l_pwm >= PWM_MIN) { OCR0A = l_pwm ; _delay_ms(PWM_STEP) ; }
+  }
+  OCR0A = p_new_pwm ;
+  l_old_pwm = p_new_pwm ;
 }
 
 
